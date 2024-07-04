@@ -12,40 +12,20 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  tobuildornot:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Should I build?
-        id: buildcheck
-        run: |
-          pip install pygithub requests && \
-          python3 .github/scripts/check_versions.py
-        env:
-          SOURCE_REPO: usnistgov/oscal-cli
-          TARGET_REPO: austinsonger/oscal-cli
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-    outputs:
-      tobuild: ${{ steps.buildcheck.outputs.build || 'True' }} # Default to 'True' if not set
-      target_name: ${{ steps.buildcheck.outputs.target_name || 'default-name' }} # Provide a default name
-      target_hash: ${{ steps.buildcheck.outputs.target_hash || 'default-hash' }} # Provide a default hash
-
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-    needs: tobuildornot
-    if: ${{ needs.tobuildornot.outputs.tobuild == 'True' }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Install Python dependencies
+        run: |
+          pip install pygithub requests
+
+      - name: Run the version check script
+        run: |
+          python3 .github/scripts/check_versions.py || echo "Proceeding with build"
 
       - name: Install cosign
         if: github.event_name != 'pull_request'
@@ -72,7 +52,7 @@ jobs:
           tags: |
             ${{ needs.tobuildornot.outputs.target_name }}
             ${{ needs.tobuildornot.outputs.target_hash }}
-      - run: echo "${{ steps.meta.outputs.tags }}"
+
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
