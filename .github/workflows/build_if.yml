@@ -6,17 +6,16 @@ on:
   schedule:
     - cron: "* 1 * * *"
   workflow_dispatch:
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  
 
 jobs:
   tobuildornot:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -31,9 +30,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
     outputs:
-      tobuild: ${{ steps.buildcheck.outputs.build }}
-      target_name: ${{ steps.buildcheck.outputs.target_name }}
-      target_hash: ${{ steps.buildcheck.outputs.target_hash }}
+      tobuild: ${{ steps.buildcheck.outputs.build || 'True' }} # Default to 'True' if not set
+      target_name: ${{ steps.buildcheck.outputs.target_name || 'default-name' }} # Provide a default name
+      target_hash: ${{ steps.buildcheck.outputs.target_hash || 'default-hash' }} # Provide a default hash
 
   build:
     runs-on: ubuntu-latest
@@ -42,7 +41,7 @@ jobs:
       packages: write
       id-token: write
     needs: tobuildornot
-    if: ${{needs.tobuildornot.outputs.tobuild}} == 'True'
+    if: ${{ needs.tobuildornot.outputs.tobuild == 'True' }}
 
     steps:
       - name: Checkout repository
