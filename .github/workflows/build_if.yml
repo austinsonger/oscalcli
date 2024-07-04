@@ -19,27 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Python dependencies
-        run: |
-          pip install pygithub requests
-
-      - name: Run the version check script
-        run: |
-          python3 .github/scripts/check_versions.py || echo "Proceeding with build"
-
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        run: |
-          mkdir -p $HOME/.cosign
-          curl -sL https://storage.googleapis.com/cosign-releases/v1.9.0/cosign-linux-amd64 -o $HOME/.cosign/cosign
-          chmod +x $HOME/.cosign/cosign
-          echo "Expected checksum: 47e2596a38e619b72e736fd171eeeaadaf6bd22d6e87a767b339168a87b62761"
-          echo "Actual checksum: $(sha256sum $HOME/.cosign/cosign | cut -d' ' -f1)"
-          if [[ "$(sha256sum $HOME/.cosign/cosign | cut -d' ' -f1)" != "47e2596a38e619b72e736fd171eeeaadaf6bd22d6e87a767b339168a87b62761" ]]; then
-            echo "ERROR: Unable to validate cosign version: 'v1.9.0'"
-            exit 1
-          fi
-
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@79abd3f86f79a9d68a23c75a09a9a85889262adf
 
@@ -57,15 +36,15 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            ${{ needs.tobuildornot.outputs.target_name }}
-            ${{ needs.tobuildornot.outputs.target_hash }}
+            latest
+            ${{ github.sha }}
+      - run: echo "${{ steps.meta.outputs.tags }}"
 
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
         with:
           context: .
-          build-args: RELEASE=${{ needs.tobuildornot.outputs.target_name }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
